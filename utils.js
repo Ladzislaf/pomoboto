@@ -1,5 +1,5 @@
 import { Markup } from 'telegraf';
-import db, { redis } from './db.js';
+import { redis } from './db.js';
 
 export const botCommands = [
 	{
@@ -7,11 +7,11 @@ export const botCommands = [
 		description: 'Open the bot menu',
 	},
 	{
-		command: '/cancel',
+		command: '/cancel_focus',
 		description: 'Cancel current focus session',
 	},
 	{
-		command: '/skip',
+		command: '/skip_break',
 		description: 'Skip the break timer',
 	},
 	{
@@ -25,12 +25,8 @@ export function showMenuKeyboard(ctx) {
 		'Menu:',
 		Markup.inlineKeyboard([
 			[Markup.button.callback('Start focus session', 'startFocus')],
-			[
-				Markup.button.callback('Show settings', 'showSettings'),
-				Markup.button.callback('Useful days', 'showCompletedDays'),
-			],
+			[Markup.button.callback('Show periods', 'showPeriods')],
 			[Markup.button.callback('Focus period', 'focusPeriod'), Markup.button.callback('Break period', 'breakPeriod')],
-			[Markup.button.callback('Day goal', 'dayGoal'), Markup.button.callback('Weekends', 'weekends')],
 			[Markup.button.callback('Close menu', 'closeMenu')],
 		])
 	);
@@ -59,7 +55,7 @@ export function setFocusInterval(ctx, focusPeriod, messageId) {
 }
 
 export function setfocusTimeout(ctx, userSettings) {
-	const { focusPeriod, breakPeriod, todayStreak, dayGoal, currentDayStreak, bestDayStreak } = userSettings;
+	const { focusPeriod, breakPeriod } = userSettings;
 	return setTimeout(async () => {
 		redis.del(`${ctx.from.id}:focusTimeout`);
 		await ctx.reply(`Focus finished! Have a break! (${breakPeriod}/${breakPeriod} min)`).then((data) => {
@@ -78,15 +74,6 @@ export function setfocusTimeout(ctx, userSettings) {
 			}, 60 * 1000);
 			redis.set(`${ctx.from.id}:breakInterval`, interval);
 		});
-		await db.updateUserSettings(ctx.from.id, 'todayStreak', todayStreak + focusPeriod);
-		if (todayStreak + focusPeriod >= dayGoal) {
-			if (await db.completeDay(ctx.from.id)) {
-				await db.updateUserSettings(ctx.from.id, 'currentDayStreak', currentDayStreak + 1);
-				if (currentDayStreak + 1 > bestDayStreak) {
-					await db.updateUserSettings(ctx.from.id, 'bestDayStreak', currentDayStreak + 1);
-				}
-			}
-		}
 		const timeout = setTimeout(async () => {
 			ctx.session.focusStarted = false;
 			redis.del(`${ctx.from.id}:breakTimeout`);

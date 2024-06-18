@@ -3,32 +3,29 @@ import { message } from 'telegraf/filters';
 import db from '../db.js';
 
 const SettingsConfig = {
-	'focusPeriod': {
-		'name': 'focus period',
-		'min': 15,
-		'max': 180,
+	focusPeriod: {
+		name: 'focus period',
+		min: 1,
+		max: 180,
 	},
-	'breakPeriod': {
-		'name': 'break period',
-		'min': 3,
-		'max': 60,
+	breakPeriod: {
+		name: 'break period',
+		min: 1,
+		max: 120,
 	},
-	'dayGoal': {
-		'name': 'day goal',
-		'min': 30,
-		'max': 720,
-	},
-}
+};
 
-const textSettingScene = new Scenes.BaseScene('textSetting');
+const userSettingScene = new Scenes.BaseScene('userSetting');
 
-textSettingScene.enter(async (ctx) => {
+userSettingScene.enter(async (ctx) => {
 	const userSettings = await db.getUserSettings(ctx.from.id);
 	const settingToChange = userSettings[ctx.session.settingToChange];
-	return ctx.reply(`Current ${SettingsConfig[ctx.session.settingToChange].name}: ${settingToChange} min. Send new value.`);
+	return ctx.reply(
+		`Current ${SettingsConfig[ctx.session.settingToChange].name}: ${settingToChange} min. Send new value.`
+	);
 });
 
-textSettingScene.on(message('text'), async (ctx) => {
+userSettingScene.on(message('text'), async (ctx) => {
 	const newValue = Number(ctx.message.text);
 	const settingName = SettingsConfig[ctx.session.settingToChange].name;
 	const settingMin = SettingsConfig[ctx.session.settingToChange].min;
@@ -45,9 +42,9 @@ textSettingScene.on(message('text'), async (ctx) => {
 	}
 });
 
-textSettingScene.on(message(), async (ctx) => {
+userSettingScene.on(message(), async (ctx) => {
 	await ctx.deleteMessage();
 	return ctx.reply('Incorrect message. Please, send number.');
 });
 
-export default textSettingScene;
+export default userSettingScene;

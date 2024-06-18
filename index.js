@@ -1,15 +1,11 @@
 import 'dotenv/config';
 import { Telegraf, Scenes, session } from 'telegraf';
-import streakJob from './cron.js';
-import textSettingScene from './scenes/textSettingScene.js';
-import weekendsScene from './scenes/weekendsScene.js';
+import userSettingScene from './scenes/userSettingScene.js';
 import { botCommands, showMenuKeyboard, setFocusInterval, setfocusTimeout, changeSettingAction } from './utils.js';
 import db, { redis } from './db.js';
 
-streakJob.start();
-
 const bot = new Telegraf(process.env.BOT_TOKEN);
-const stage = new Scenes.Stage([textSettingScene, weekendsScene]);
+const stage = new Scenes.Stage([userSettingScene]);
 
 bot.use(session());
 bot.use(stage.middleware());
@@ -25,7 +21,7 @@ bot.start(async (ctx) => {
 	return db.createNewUser(ctx.from.id);
 });
 
-bot.command('cancel', async (ctx) => {
+bot.command('cancel_focus', async (ctx) => {
 	const focusTimeout = await redis.get(`${ctx.from.id}:focusTimeout`);
 	const focusInterval = await redis.get(`${ctx.from.id}:focusInterval`);
 	console.log('[Cancel command] focusInterval', Boolean(focusTimeout));
@@ -43,7 +39,7 @@ bot.command('cancel', async (ctx) => {
 	}
 });
 
-bot.command('skip', async (ctx) => {
+bot.command('skip_break', async (ctx) => {
 	const breakTimeout = await redis.get(`${ctx.from.id}:breakTimeout`);
 	const breakInterval = await redis.get(`${ctx.from.id}:breakInterval`);
 	console.log('[Skip command] breakInterval', Boolean(breakInterval));
@@ -91,50 +87,17 @@ bot.action('startFocus', async (ctx) => {
 });
 
 bot.action('focusPeriod', async (ctx) => {
-	return changeSettingAction(ctx, 'focusPeriod', 'textSetting');
+	return changeSettingAction(ctx, 'focusPeriod', 'userSetting');
 });
 
 bot.action('breakPeriod', async (ctx) => {
-	return changeSettingAction(ctx, 'breakPeriod', 'textSetting');
+	return changeSettingAction(ctx, 'breakPeriod', 'userSetting');
 });
 
-bot.action('dayGoal', async (ctx) => {
-	return changeSettingAction(ctx, 'dayGoal', 'textSetting');
-});
-
-bot.action('weekends', async (ctx) => {
-	return changeSettingAction(ctx, 'includeWeekends', 'weekends');
-});
-
-bot.action('showSettings', async (ctx) => {
-	const { focusPeriod, breakPeriod, todayStreak, dayGoal, currentDayStreak, bestDayStreak, includeWeekends } =
-		await db.getUserSettings(ctx.from.id);
-	const isWorkingOnWeekends = includeWeekends ? 'Yes, no day out' : 'No';
-	await ctx.reply(
-		`Focus period | ${focusPeriod} [min]\n` +
-			`Break period | ${breakPeriod} [min]\n` +
-			`Today done | ${todayStreak} [min]\n` +
-			`Day goal | ${dayGoal} [min]\n` +
-			`Current day streak | ${currentDayStreak} [day]\n` +
-			`Best day streak | ${bestDayStreak} [day]\n` +
-			`Work on weekends | ${isWorkingOnWeekends}\n`
-	);
-	return ctx.answerCbQuery('Settings.');
-});
-
-bot.action('showCompletedDays', async (ctx) => {
-	const completedDays = await db.getCompletedDays(ctx.from.id);
-	let daysCounter = 0;
-	let message = '';
-	while (daysCounter < 10 && completedDays[daysCounter]) {
-		message += `${completedDays[daysCounter].day.toDateString()}\n`;
-		daysCounter++;
-	}
-	if (completedDays.length > 10) {
-		message += `... [${completedDays.length - daysCounter} more]`;
-	}
-	await ctx.reply(message ? 'Useful days:\n' + message : 'There is no useful days yet.');
-	await ctx.answerCbQuery('Useful days.');
+bot.action('showPeriods', async (ctx) => {
+	const { focusPeriod, breakPeriod } = await db.getUserSettings(ctx.from.id);
+	await ctx.reply(`Focus period | ${focusPeriod} [min]\n` + `Break period | ${breakPeriod} [min]\n`);
+	return ctx.answerCbQuery('Periods.');
 });
 
 bot.action('closeMenu', async (ctx) => {
@@ -142,14 +105,14 @@ bot.action('closeMenu', async (ctx) => {
 	await ctx.answerCbQuery('Menu closed!');
 });
 
-if (process.env.LOCAL_MODE === 'on') {
+if (process.env.ENV === 'local') {
 	bot.launch(() => console.log('Pomoboto bot is running locally.'));
 } else {
 	bot.launch(
 		{
 			webhook: {
-				domain: process.env.DOMAIN,
-				port: process.env.PORT || 443,
+				domain: process.env.WH_DOMAIN,
+				port: process.env.WH_PORT || 443,
 			},
 		},
 		() => console.log('Pomoboto bot is running on webhook.')
