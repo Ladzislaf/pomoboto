@@ -9,20 +9,7 @@ datasource db {
 }
 
 model User {
-  id               String          @id
-  focusPeriod      Int             @default(25)
-  breakPeriod      Int             @default(5)
-  dayGoal          Int             @default(120)
-  todayStreak      Int             @default(0)
-  currentDayStreak Int             @default(0)
-  bestDayStreak    Int             @default(0)
-  includeWeekends  Boolean         @default(false)
-  completedDays    CompletedDays[]
-}
-
-model CompletedDays {
-  id     Int      @id @default(autoincrement())
-  user   User     @relation(fields: [userId], references: [id])
-  userId String
-  day    DateTime @default(now()) @db.Date
+  id          String @id
+  focusPeriod Int    @default(25)
+  breakPeriod Int    @default(5)
 }
