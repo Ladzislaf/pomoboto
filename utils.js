@@ -40,7 +40,12 @@ export async function changeSettingAction(ctx, setting, scene) {
 
 export function setFocusInterval(ctx, focusPeriod, messageId) {
 	let timerValue = focusPeriod;
+	const wakeInterval = Number(process.env.WAKE_INTERVAL);
+	wakeContainer();
 	return setInterval(async () => {
+		if (wakeInterval && timerValue % wakeInterval === 0) {
+			await wakeContainer();
+		}
 		if (timerValue <= 0) {
 			const focusInterval = await redis.get(`${ctx.from.id}:focusInterval`);
 			console.log('[setFocusIntreval timerValue = 0] focusInterval from redis:', focusInterval);
@@ -60,7 +65,12 @@ export function setfocusTimeout(ctx, userSettings) {
 		redis.del(`${ctx.from.id}:focusTimeout`);
 		await ctx.reply(`Focus finished! Have a break! (${breakPeriod}/${breakPeriod} min)`).then((data) => {
 			let timerValue = breakPeriod;
+			const wakeInterval = Number(process.env.WAKE_INTERVAL);
+			wakeContainer();
 			const interval = setInterval(async () => {
+				if (wakeInterval && timerValue % wakeInterval === 0) {
+					await wakeContainer();
+				}
 				if (timerValue <= 0) {
 					const breakInterval = await redis.get(`${ctx.from.id}:breakInterval`);
 					console.log('[setfocusTimeout timerValue = 0] breakInterval from redis:', breakInterval);
@@ -81,4 +91,11 @@ export function setfocusTimeout(ctx, userSettings) {
 		}, breakPeriod * 60 * 1000);
 		redis.set(`${ctx.from.id}:breakTimeout`, timeout);
 	}, focusPeriod * 60 * 1000);
+}
+
+export async function wakeContainer() {
+	console.log('[wakeContainer] Waking container up...');
+	return fetch(process.env.WH_DOMAIN).catch((err) => {
+		console.error('[wakeContainer] Fetch error:', err.message);
+	});
 }
