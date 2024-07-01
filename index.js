@@ -12,6 +12,11 @@ bot.use(stage.middleware());
 
 bot.telegram.setMyCommands(botCommands);
 
+bot.catch((err, ctx) => {
+	console.error(`User ${ctx.from.username} (${ctx.from.id}) error:`, err.message);
+	ctx.reply('Error, try to restart the Bot.');
+});
+
 bot.start(async (ctx) => {
 	console.log('[Start] first name:', ctx.from.first_name);
 	console.log('[Start] last name:', ctx.from.last_name);
@@ -27,7 +32,7 @@ bot.command('cancel_focus', async (ctx) => {
 	console.log('[Cancel command] focusInterval', Boolean(focusTimeout));
 	console.log('[Cancel command] focusTimeout', Boolean(focusInterval));
 	await ctx.deleteMessage();
-	if (focusTimeout && focusInterval) {
+	if (focusTimeout) {
 		ctx.session.focusStarted = false;
 		clearInterval(focusInterval);
 		clearTimeout(focusTimeout);
@@ -45,7 +50,7 @@ bot.command('skip_break', async (ctx) => {
 	console.log('[Skip command] breakInterval', Boolean(breakInterval));
 	console.log('[Skip command] breakTimeout', Boolean(breakTimeout));
 	await ctx.deleteMessage();
-	if (breakTimeout && breakInterval) {
+	if (breakTimeout) {
 		ctx.session.focusStarted = false;
 		clearInterval(breakInterval);
 		clearTimeout(breakTimeout);

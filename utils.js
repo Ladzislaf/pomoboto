@@ -38,10 +38,32 @@ export async function changeSettingAction(ctx, setting, scene) {
 	return ctx.answerCbQuery(setting);
 }
 
+export function setfocusTimeout(ctx, userSettings) {
+	const { focusPeriod, breakPeriod } = userSettings;
+	return setTimeout(async () => {
+		redis.del(`${ctx.from.id}:focusTimeout`);
+		await ctx.reply(`Focus finished! Have a break! (${breakPeriod}/${breakPeriod} min)`).then((data) => {
+			const interval = setBreakIntreval(ctx, breakPeriod, data.message_id);
+			redis.set(`${ctx.from.id}:breakInterval`, interval);
+		});
+		const timeout = setBreakTimeout(ctx, breakPeriod);
+		redis.set(`${ctx.from.id}:breakTimeout`, timeout);
+	}, focusPeriod * 60 * 1000);
+}
+
+export function setBreakTimeout(ctx, breakPeriod) {
+	return setTimeout(async () => {
+		ctx.session.focusStarted = false;
+		redis.del(`${ctx.from.id}:breakTimeout`);
+		return ctx.reply(`Break finished! Start a new focus session from the menu now!`);
+	}, breakPeriod * 60 * 1000);
+}
+
 export function setFocusInterval(ctx, focusPeriod, messageId) {
 	let timerValue = focusPeriod;
 	const wakeInterval = Number(process.env.WAKE_INTERVAL);
 	wakeContainer();
+
 	return setInterval(async () => {
 		if (wakeInterval && timerValue % wakeInterval === 0) {
 			await wakeContainer();
@@ -53,44 +75,52 @@ export function setFocusInterval(ctx, focusPeriod, messageId) {
 			redis.del(`${ctx.from.id}:focusInterval`);
 			return;
 		}
-		await ctx.editMessageText(`Focus started! (${--timerValue}/${focusPeriod} min)`, {
-			message_id: messageId,
-		});
+		await ctx
+			.editMessageText(`Focus started! (${--timerValue}/${focusPeriod} min)`, {
+				message_id: messageId,
+			})
+			.catch(async (err) => {
+				console.log('[setFocusIntreval edit message catch] error:', err.message);
+
+				const focusInterval = await redis.get(`${ctx.from.id}:focusInterval`);
+				focusInterval && clearInterval(focusInterval);
+				redis.del(`${ctx.from.id}:focusInterval`);
+
+				console.log('[setFocusIntreval edit message catch] focusInterval from redis:', focusInterval);
+			});
 	}, 60 * 1000);
 }
 
-export function setfocusTimeout(ctx, userSettings) {
-	const { focusPeriod, breakPeriod } = userSettings;
-	return setTimeout(async () => {
-		redis.del(`${ctx.from.id}:focusTimeout`);
-		await ctx.reply(`Focus finished! Have a break! (${breakPeriod}/${breakPeriod} min)`).then((data) => {
-			let timerValue = breakPeriod;
-			const wakeInterval = Number(process.env.WAKE_INTERVAL);
-			wakeContainer();
-			const interval = setInterval(async () => {
-				if (wakeInterval && timerValue % wakeInterval === 0) {
-					await wakeContainer();
-				}
-				if (timerValue <= 0) {
-					const breakInterval = await redis.get(`${ctx.from.id}:breakInterval`);
-					console.log('[setfocusTimeout timerValue = 0] breakInterval from redis:', breakInterval);
-					clearInterval(breakInterval);
-					redis.del(`${ctx.from.id}:breakInterval`);
-					return;
-				}
-				await ctx.editMessageText(`Focus finished! Have a break! (${--timerValue}/${breakPeriod} min)`, {
-					message_id: data.message_id,
-				});
-			}, 60 * 1000);
-			redis.set(`${ctx.from.id}:breakInterval`, interval);
-		});
-		const timeout = setTimeout(async () => {
-			ctx.session.focusStarted = false;
-			redis.del(`${ctx.from.id}:breakTimeout`);
-			return ctx.reply(`Break finished! Start a new focus session from the menu now!`);
-		}, breakPeriod * 60 * 1000);
-		redis.set(`${ctx.from.id}:breakTimeout`, timeout);
-	}, focusPeriod * 60 * 1000);
+export function setBreakIntreval(ctx, breakPeriod, messageId) {
+	let timerValue = breakPeriod;
+	const wakeInterval = Number(process.env.WAKE_INTERVAL);
+	wakeContainer();
+
+	return setInterval(async () => {
+		if (wakeInterval && timerValue % wakeInterval === 0) {
+			await wakeContainer();
+		}
+		if (timerValue <= 0) {
+			const breakInterval = await redis.get(`${ctx.from.id}:breakInterval`);
+			console.log('[setfocusTimeout timerValue = 0] breakInterval from redis:', breakInterval);
+			clearInterval(breakInterval);
+			redis.del(`${ctx.from.id}:breakInterval`);
+			return;
+		}
+		await ctx
+			.editMessageText(`Focus finished! Have a break! (${--timerValue}/${breakPeriod} min)`, {
+				message_id: messageId,
+			})
+			.catch(async (err) => {
+				console.log('[setBreakIntreval edit message catch] error:', err.message);
+
+				const breakInterval = await redis.get(`${ctx.from.id}:breakInterval`);
+				breakInterval && clearInterval(breakInterval);
+				redis.del(`${ctx.from.id}:breakInterval`);
+
+				console.log('[setBreakIntreval edit message catch] breakInterval from redis:', breakInterval);
+			});
+	}, 60 * 1000);
 }
 
 export async function wakeContainer() {
