@@ -11,4 +11,4 @@ COPY . .
 # ENV WH_DOMAIN=conatainer-webhook-domain
 ENV WH_PORT=443
 EXPOSE ${WH_PORT}
-CMD [ "npm", "run", "start:migrate:prod" ]
+CMD if [ "$ENVIRONMENT" = "migrate" ]; then npm run start:migrate:prod; else npm run start:prod; fi
