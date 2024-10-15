@@ -1,11 +1,12 @@
 import 'dotenv/config';
 import { Telegraf, Scenes, session } from 'telegraf';
-import userSettingScene from './scenes/userSettingScene.js';
-import { botCommands, showMenuKeyboard, setFocusInterval, setfocusTimeout, changeSettingAction } from './utils.js';
+import customMenuScene from './scenes/customMenuScene.js';
+import startFocusScene from './scenes/startFocusScene.js';
+import { botCommands } from './utils.js';
 import db, { redis } from './db.js';
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
-const stage = new Scenes.Stage([userSettingScene]);
+const stage = new Scenes.Stage([customMenuScene, startFocusScene]);
 
 bot.use(session());
 bot.use(stage.middleware());
@@ -18,19 +19,28 @@ bot.catch((err, ctx) => {
 });
 
 bot.start(async (ctx) => {
-	console.log('[Start] first name:', ctx.from.first_name);
-	console.log('[Start] last name:', ctx.from.last_name);
-	console.log('[Start] username:', ctx.from.username);
+	console.log('[Starting] first name:', ctx.from.first_name);
+	console.log('[Starting] last name:', ctx.from.last_name);
+	console.log('[Starting] username:', ctx.from.username);
 	await ctx.deleteMessage();
-	await showMenuKeyboard(ctx);
+	await ctx.reply('Hi, I am your Pomodoro Bot.\nUse the command /focus to start!');
 	return db.createNewUser(ctx.from.id);
 });
 
-bot.command('cancel_focus', async (ctx) => {
+bot.command('focus', async (ctx) => {
+	await ctx.deleteMessage();
+	if (ctx.session.focusStarted) {
+		return ctx.reply('The focus has already started.');
+	}
+
+	return ctx.scene.enter('startFocus');
+});
+
+bot.command('abort_focus', async (ctx) => {
 	const focusTimeout = await redis.get(`${ctx.from.id}:focusTimeout`);
 	const focusInterval = await redis.get(`${ctx.from.id}:focusInterval`);
-	console.log('[Cancel command] focusInterval', Boolean(focusTimeout));
-	console.log('[Cancel command] focusTimeout', Boolean(focusInterval));
+	console.log('[Aborting] focusInterval', Boolean(focusTimeout));
+	console.log('[Aborting] focusTimeout', Boolean(focusInterval));
 	await ctx.deleteMessage();
 	if (focusTimeout) {
 		ctx.session.focusStarted = false;
@@ -38,9 +48,9 @@ bot.command('cancel_focus', async (ctx) => {
 		clearTimeout(focusTimeout);
 		redis.del(`${ctx.from.id}:focusTimeout`);
 		redis.del(`${ctx.from.id}:focusInterval`);
-		return ctx.reply('Focus canceled.');
+		return ctx.reply('[Abort] Focus aborted.');
 	} else {
-		return ctx.reply('The focus has not started yet.');
+		return ctx.reply('[Abort] The focus has not started yet.');
 	}
 });
 
@@ -62,6 +72,11 @@ bot.command('skip_break', async (ctx) => {
 	}
 });
 
+bot.command('custom', async (ctx) => {
+	await ctx.deleteMessage();
+	return ctx.scene.enter('customizationMenu');
+});
+
 bot.command('playlist', async (ctx) => {
 	await ctx.deleteMessage();
 	return ctx.reply(
@@ -70,44 +85,6 @@ bot.command('playlist', async (ctx) => {
 			parse_mode: 'MarkdownV2',
 		}
 	);
-});
-
-bot.action('startFocus', async (ctx) => {
-	const focusTimeout = await redis.get(`${ctx.from.id}:focusTimeout`);
-	const focusInterval = await redis.get(`${ctx.from.id}:focusInterval`);
-	console.log('[Action startFocus before] focusInterval', Boolean(focusInterval));
-	console.log('[Action startFocus before] focusTimeout', Boolean(focusTimeout));
-	if (ctx.session.focusStarted) {
-		return ctx.answerCbQuery('Already started.');
-	}
-	ctx.session.focusStarted = true;
-	const userSettings = await db.getUserSettings(ctx.from.id);
-	await ctx.answerCbQuery('Focus!');
-	await ctx.reply(`Focus started! (${userSettings.focusPeriod}/${userSettings.focusPeriod} min)`).then((data) => {
-		const interval = setFocusInterval(ctx, userSettings.focusPeriod, data.message_id);
-		redis.set(`${ctx.from.id}:focusInterval`, interval);
-	});
-	const timeout = setfocusTimeout(ctx, userSettings);
-	redis.set(`${ctx.from.id}:focusTimeout`, timeout);
-});
-
-bot.action('focusPeriod', async (ctx) => {
-	return changeSettingAction(ctx, 'focusPeriod', 'userSetting');
-});
-
-bot.action('breakPeriod', async (ctx) => {
-	return changeSettingAction(ctx, 'breakPeriod', 'userSetting');
-});
-
-bot.action('showPeriods', async (ctx) => {
-	const { focusPeriod, breakPeriod } = await db.getUserSettings(ctx.from.id);
-	await ctx.reply(`Focus period | ${focusPeriod} [min]\n` + `Break period | ${breakPeriod} [min]\n`);
-	return ctx.answerCbQuery('Periods.');
-});
-
-bot.action('closeMenu', async (ctx) => {
-	await ctx.deleteMessage();
-	await ctx.answerCbQuery('Menu closed!');
 });
 
 if (process.env.ENV === 'local') {

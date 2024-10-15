@@ -1,42 +1,31 @@
-import { Markup } from 'telegraf';
 import { redis } from './db.js';
 
 export const botCommands = [
 	{
 		command: '/start',
-		description: 'Open the bot menu',
+		description: 'Restart the Bot',
 	},
 	{
-		command: '/cancel_focus',
-		description: 'Cancel current focus session',
+		command: '/focus',
+		description: 'Start a new focus session',
+	},
+	{
+		command: '/abort_focus',
+		description: 'Abort the current focus session',
 	},
 	{
 		command: '/skip_break',
-		description: 'Skip the break timer',
+		description: 'Skip the break',
+	},
+	{
+		command: '/custom',
+		description: 'Configure custom periods',
 	},
 	{
 		command: '/playlist',
-		description: 'Spotify playlist',
+		description: 'Spotify playlist for concentration',
 	},
 ];
-
-export function showMenuKeyboard(ctx) {
-	return ctx.reply(
-		'Menu:',
-		Markup.inlineKeyboard([
-			[Markup.button.callback('Start focus session', 'startFocus')],
-			[Markup.button.callback('Show periods', 'showPeriods')],
-			[Markup.button.callback('Focus period', 'focusPeriod'), Markup.button.callback('Break period', 'breakPeriod')],
-			[Markup.button.callback('Close menu', 'closeMenu')],
-		])
-	);
-}
-
-export async function changeSettingAction(ctx, setting, scene) {
-	ctx.session.settingToChange = setting;
-	await ctx.scene.enter(scene);
-	return ctx.answerCbQuery(setting);
-}
 
 export function setfocusTimeout(ctx, userSettings) {
 	const { focusPeriod, breakPeriod } = userSettings;
