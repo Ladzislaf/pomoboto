@@ -6,8 +6,8 @@ const startFocusScene = new Scenes.BaseScene('startFocus');
 
 const FocusOptions = {
 	short: { focusPeriod: 25, breakPeriod: 5 },
-	default: { focusPeriod: 50, break: 10 },
-	long: { focusPeriod: 75, break: 15 },
+	default: { focusPeriod: 50, breakPeriod: 10 },
+	long: { focusPeriod: 75, breakPeriod: 15 },
 	custom: {},
 };
 
