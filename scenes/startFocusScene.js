@@ -41,7 +41,7 @@ startFocusScene.action(/^start:([a-z]+)$/, async (ctx) => {
 	await ctx.deleteMessage();
 	await ctx.answerCbQuery('Focus!');
 
-	await ctx.reply(`[${focusOption}] Focus started! (${focusPeriod}/${focusPeriod} min)`).then((data) => {
+	await ctx.reply(`Focus started! (${focusPeriod}/${focusPeriod} min)\n[${focusOption}]`).then((data) => {
 		const interval = setFocusInterval(ctx, focusPeriod, data.message_id);
 		redis.set(`${ctx.from.id}:focusInterval`, interval);
 	});

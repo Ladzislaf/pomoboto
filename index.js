@@ -39,8 +39,6 @@ bot.command('focus', async (ctx) => {
 bot.command('abort_focus', async (ctx) => {
 	const focusTimeout = await redis.get(`${ctx.from.id}:focusTimeout`);
 	const focusInterval = await redis.get(`${ctx.from.id}:focusInterval`);
-	console.log('[Aborting] focusInterval', Boolean(focusTimeout));
-	console.log('[Aborting] focusTimeout', Boolean(focusInterval));
 	await ctx.deleteMessage();
 	if (focusTimeout) {
 		ctx.session.focusStarted = false;
@@ -57,8 +55,6 @@ bot.command('abort_focus', async (ctx) => {
 bot.command('skip_break', async (ctx) => {
 	const breakTimeout = await redis.get(`${ctx.from.id}:breakTimeout`);
 	const breakInterval = await redis.get(`${ctx.from.id}:breakInterval`);
-	console.log('[Skip command] breakInterval', Boolean(breakInterval));
-	console.log('[Skip command] breakTimeout', Boolean(breakTimeout));
 	await ctx.deleteMessage();
 	if (breakTimeout) {
 		ctx.session.focusStarted = false;
