@@ -43,6 +43,10 @@ bot.command('abort_focus', async (ctx) => {
 	await ctx.deleteMessage();
 	const { focusIntervalId, focusTimeoutId } = ctx.session;
 
+	console.log(
+		`[abort_focus: ${ctx.from.username}] focusIntervalId: ${focusIntervalId}; focusTimeoutId: ${focusTimeoutId}`
+	);
+
 	if (focusTimeoutId || focusIntervalId) {
 		clearInterval(focusIntervalId);
 		clearTimeout(focusTimeoutId);
@@ -57,6 +61,10 @@ bot.command('abort_focus', async (ctx) => {
 bot.command('skip_break', async (ctx) => {
 	await ctx.deleteMessage();
 	const { breakIntervalId, breakTimeoutId } = ctx.session;
+
+	console.log(
+		`[skip_break: ${ctx.from.username}] breakIntervalId: ${breakIntervalId}; breakTimeoutId: ${breakTimeoutId}`
+	);
 
 	if (breakTimeoutId) {
 		clearInterval(breakIntervalId);

@@ -33,7 +33,11 @@ export function startFocusTimeout(ctx, userSettings) {
 		ctx.session.breakTimeoutId = startBreakTimeout(ctx, breakPeriod);
 		delete ctx.session.focusIntervalId;
 		delete ctx.session.focusTimeoutId;
-	}, focusPeriod * 6 * 1000);
+
+		console.log(
+			`[break: ${ctx.from.username}] session.breakIntervalId: ${ctx.session.breakIntervalId}; session.breakTimeoutId: ${ctx.session.breakTimeoutId}`
+		);
+	}, focusPeriod * 60 * 1000);
 
 	return Number(timeoutId);
 }
@@ -43,7 +47,7 @@ export function startBreakTimeout(ctx, breakPeriod) {
 		delete ctx.session.breakIntervalId;
 		delete ctx.session.breakTimeoutId;
 		return ctx.reply(`Break finished! Type /focus to start a new focus session!`);
-	}, breakPeriod * 6 * 1000);
+	}, breakPeriod * 60 * 1000);
 
 	return Number(timeoutId);
 }
@@ -70,10 +74,10 @@ export async function startFocusInterval(ctx, focusPeriod) {
 				message_id: messageId,
 			})
 			.catch(async (err) => {
-				console.error('[startFocusInterval edit message catch] error:', err.message);
+				console.error('[startFocusInterval: catch] edit message error:', err.message);
 				clearInterval(intervalId);
 			});
-	}, 6 * 1000);
+	}, 60 * 1000);
 
 	wakeContainer();
 	return Number(intervalId);
@@ -101,18 +105,18 @@ export async function startBreakIntreval(ctx, breakPeriod) {
 				message_id: messageId,
 			})
 			.catch(async (err) => {
-				console.error('[startBreakIntreval edit message catch] error:', err.message);
+				console.error('[startBreakIntreval: catch] edit message error:', err.message);
 				clearInterval(intervalId);
 			});
-	}, 6 * 1000);
+	}, 60 * 1000);
 
 	wakeContainer();
 	return Number(intervalId);
 }
 
 export async function wakeContainer() {
-	console.log('[wakeContainer] Waking container up...');
+	console.log('[Waking] Waking container up...');
 	return fetch(process.env.WH_DOMAIN).catch((err) => {
-		console.error('[wakeContainer] Fetch error:', err.message);
+		console.error('[Waking] Fetch error:', err.message);
 	});
 }

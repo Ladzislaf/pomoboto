@@ -36,6 +36,10 @@ startFocusScene.action(/^start:([a-z]+)$/, async (ctx) => {
 	ctx.session.focusIntervalId = await startFocusInterval(ctx, focusPeriod);
 	ctx.session.focusTimeoutId = startFocusTimeout(ctx, { focusPeriod, breakPeriod });
 
+	console.log(
+		`[focus: ${ctx.from.username}] session.focusIntervalId: ${ctx.session.focusIntervalId}; session.focusTimeoutId: ${ctx.session.focusTimeoutId}`
+	);
+
 	await ctx.answerCbQuery('Focus!');
 	await ctx.deleteMessage();
 	return ctx.scene.leave();
