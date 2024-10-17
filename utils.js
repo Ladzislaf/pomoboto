@@ -1,5 +1,3 @@
-import { redis } from './db.js';
-
 export const botCommands = [
 	{
 		command: '/start',
@@ -27,40 +25,44 @@ export const botCommands = [
 	},
 ];
 
-export function setfocusTimeout(ctx, userSettings) {
+export function startFocusTimeout(ctx, userSettings) {
 	const { focusPeriod, breakPeriod } = userSettings;
-	return setTimeout(async () => {
-		redis.del(`${ctx.from.id}:focusTimeout`);
-		await ctx.reply(`Focus finished! Have a break! (${breakPeriod}/${breakPeriod} min)`).then((data) => {
-			const interval = setBreakIntreval(ctx, breakPeriod, data.message_id);
-			redis.set(`${ctx.from.id}:breakInterval`, interval);
-		});
-		const timeout = setBreakTimeout(ctx, breakPeriod);
-		redis.set(`${ctx.from.id}:breakTimeout`, timeout);
-	}, focusPeriod * 60 * 1000);
+
+	const timeoutId = setTimeout(async () => {
+		ctx.session.breakIntervalId = await startBreakIntreval(ctx, breakPeriod);
+		ctx.session.breakTimeoutId = startBreakTimeout(ctx, breakPeriod);
+		delete ctx.session.focusIntervalId;
+		delete ctx.session.focusTimeoutId;
+	}, focusPeriod * 6 * 1000);
+
+	return Number(timeoutId);
 }
 
-export function setBreakTimeout(ctx, breakPeriod) {
-	return setTimeout(async () => {
-		ctx.session.focusStarted = false;
-		redis.del(`${ctx.from.id}:breakTimeout`);
+export function startBreakTimeout(ctx, breakPeriod) {
+	const timeoutId = setTimeout(async () => {
+		delete ctx.session.breakIntervalId;
+		delete ctx.session.breakTimeoutId;
 		return ctx.reply(`Break finished! Type /focus to start a new focus session!`);
-	}, breakPeriod * 60 * 1000);
+	}, breakPeriod * 6 * 1000);
+
+	return Number(timeoutId);
 }
 
-export function setFocusInterval(ctx, focusPeriod, messageId) {
+export async function startFocusInterval(ctx, focusPeriod) {
+	let messageId;
 	let timerValue = focusPeriod;
 	const wakeInterval = Number(process.env.WAKE_INTERVAL);
-	wakeContainer();
 
-	return setInterval(async () => {
+	await ctx.reply(`Focus started! (${focusPeriod}/${focusPeriod} min)`).then((data) => {
+		messageId = data.message_id;
+	});
+
+	const intervalId = setInterval(async () => {
 		if (wakeInterval && timerValue % wakeInterval === 0) {
 			await wakeContainer();
 		}
 		if (timerValue <= 0) {
-			const focusInterval = await redis.get(`${ctx.from.id}:focusInterval`);
-			clearInterval(focusInterval);
-			redis.del(`${ctx.from.id}:focusInterval`);
+			clearInterval(intervalId);
 			return;
 		}
 		await ctx
@@ -68,28 +70,30 @@ export function setFocusInterval(ctx, focusPeriod, messageId) {
 				message_id: messageId,
 			})
 			.catch(async (err) => {
-				console.error('[setFocusIntreval edit message catch] error:', err.message);
-
-				const focusInterval = await redis.get(`${ctx.from.id}:focusInterval`);
-				focusInterval && clearInterval(focusInterval);
-				redis.del(`${ctx.from.id}:focusInterval`);
+				console.error('[startFocusInterval edit message catch] error:', err.message);
+				clearInterval(intervalId);
 			});
-	}, 60 * 1000);
+	}, 6 * 1000);
+
+	wakeContainer();
+	return Number(intervalId);
 }
 
-export function setBreakIntreval(ctx, breakPeriod, messageId) {
+export async function startBreakIntreval(ctx, breakPeriod) {
+	let messageId;
 	let timerValue = breakPeriod;
 	const wakeInterval = Number(process.env.WAKE_INTERVAL);
-	wakeContainer();
 
-	return setInterval(async () => {
+	await ctx.reply(`Focus finished! Have a break! (${breakPeriod}/${breakPeriod} min)`).then((data) => {
+		messageId = data.message_id;
+	});
+
+	const intervalId = setInterval(async () => {
 		if (wakeInterval && timerValue % wakeInterval === 0) {
 			await wakeContainer();
 		}
 		if (timerValue <= 0) {
-			const breakInterval = await redis.get(`${ctx.from.id}:breakInterval`);
-			clearInterval(breakInterval);
-			redis.del(`${ctx.from.id}:breakInterval`);
+			clearInterval(intervalId);
 			return;
 		}
 		await ctx
@@ -97,13 +101,13 @@ export function setBreakIntreval(ctx, breakPeriod, messageId) {
 				message_id: messageId,
 			})
 			.catch(async (err) => {
-				console.error('[setBreakIntreval edit message catch] error:', err.message);
-
-				const breakInterval = await redis.get(`${ctx.from.id}:breakInterval`);
-				breakInterval && clearInterval(breakInterval);
-				redis.del(`${ctx.from.id}:breakInterval`);
+				console.error('[startBreakIntreval edit message catch] error:', err.message);
+				clearInterval(intervalId);
 			});
-	}, 60 * 1000);
+	}, 6 * 1000);
+
+	wakeContainer();
+	return Number(intervalId);
 }
 
 export async function wakeContainer() {

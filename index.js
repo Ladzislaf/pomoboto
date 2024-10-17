@@ -3,7 +3,7 @@ import { Telegraf, Scenes, session } from 'telegraf';
 import customMenuScene from './scenes/customMenuScene.js';
 import startFocusScene from './scenes/startFocusScene.js';
 import { botCommands } from './utils.js';
-import db, { redis } from './db.js';
+import db from './db.js';
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const stage = new Scenes.Stage([customMenuScene, startFocusScene]);
@@ -29,40 +29,41 @@ bot.start(async (ctx) => {
 
 bot.command('focus', async (ctx) => {
 	await ctx.deleteMessage();
-	if (ctx.session.focusStarted) {
+
+	if (ctx.session.focusIntervalId || ctx.session.focusTimeoutId) {
 		return ctx.reply('The focus has already started.');
 	}
-
+	if (ctx.session.breakIntervalId || ctx.session.breakTimeoutId) {
+		return ctx.reply('You are taking a break now.');
+	}
 	return ctx.scene.enter('startFocus');
 });
 
 bot.command('abort_focus', async (ctx) => {
-	const focusTimeout = await redis.get(`${ctx.from.id}:focusTimeout`);
-	const focusInterval = await redis.get(`${ctx.from.id}:focusInterval`);
 	await ctx.deleteMessage();
-	if (focusTimeout) {
-		ctx.session.focusStarted = false;
-		clearInterval(focusInterval);
-		clearTimeout(focusTimeout);
-		redis.del(`${ctx.from.id}:focusTimeout`);
-		redis.del(`${ctx.from.id}:focusInterval`);
-		return ctx.reply('[Abort] Focus aborted.');
+	const { focusIntervalId, focusTimeoutId } = ctx.session;
+
+	if (focusTimeoutId || focusIntervalId) {
+		clearInterval(focusIntervalId);
+		clearTimeout(focusTimeoutId);
+		delete ctx.session.focusIntervalId;
+		delete ctx.session.focusTimeoutId;
+		return ctx.reply('Focus aborted.');
 	} else {
-		return ctx.reply('[Abort] The focus has not started yet.');
+		return ctx.reply('The focus has not started yet.');
 	}
 });
 
 bot.command('skip_break', async (ctx) => {
-	const breakTimeout = await redis.get(`${ctx.from.id}:breakTimeout`);
-	const breakInterval = await redis.get(`${ctx.from.id}:breakInterval`);
 	await ctx.deleteMessage();
-	if (breakTimeout) {
-		ctx.session.focusStarted = false;
-		clearInterval(breakInterval);
-		clearTimeout(breakTimeout);
-		redis.del(`${ctx.from.id}:breakTimeout`);
-		redis.del(`${ctx.from.id}:breakInterval`);
-		return ctx.reply('Break skiped.');
+	const { breakIntervalId, breakTimeoutId } = ctx.session;
+
+	if (breakTimeoutId) {
+		clearInterval(breakIntervalId);
+		clearTimeout(breakTimeoutId);
+		delete ctx.session.breakIntervalId;
+		delete ctx.session.breakTimeoutId;
+		return ctx.reply('The break is skipped.');
 	} else {
 		return ctx.reply('The break has not started yet.');
 	}

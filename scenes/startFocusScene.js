@@ -1,6 +1,6 @@
 import { Scenes, Markup } from 'telegraf';
-import db, { redis } from '../db.js';
-import { setFocusInterval, setfocusTimeout } from '../utils.js';
+import db from '../db.js';
+import { startFocusInterval, startFocusTimeout } from '../utils.js';
 
 const startFocusScene = new Scenes.BaseScene('startFocus');
 
@@ -30,30 +30,20 @@ startFocusScene.enter(async (ctx) => {
 });
 
 startFocusScene.action(/^start:([a-z]+)$/, async (ctx) => {
-	if (ctx.session.focusStarted) {
-		return ctx.answerCbQuery('Already started.');
-	}
-
 	const focusOption = ctx.match[1];
 	const { focusPeriod, breakPeriod } = FocusOptions[focusOption];
 
-	ctx.session.focusStarted = true;
-	await ctx.deleteMessage();
+	ctx.session.focusIntervalId = await startFocusInterval(ctx, focusPeriod);
+	ctx.session.focusTimeoutId = startFocusTimeout(ctx, { focusPeriod, breakPeriod });
+
 	await ctx.answerCbQuery('Focus!');
-
-	await ctx.reply(`Focus started! (${focusPeriod}/${focusPeriod} min)\n[${focusOption}]`).then((data) => {
-		const interval = setFocusInterval(ctx, focusPeriod, data.message_id);
-		redis.set(`${ctx.from.id}:focusInterval`, interval);
-	});
-	const timeout = setfocusTimeout(ctx, { focusPeriod, breakPeriod });
-	redis.set(`${ctx.from.id}:focusTimeout`, timeout);
-
+	await ctx.deleteMessage();
 	return ctx.scene.leave();
 });
 
 startFocusScene.action('cancelFocus', async (ctx) => {
-	await ctx.deleteMessage();
 	await ctx.answerCbQuery('Canceled!');
+	await ctx.deleteMessage();
 	return ctx.scene.leave();
 });
 
