@@ -63,11 +63,10 @@ export async function startFocusInterval(ctx, focusPeriod) {
 
 	const intervalId = setInterval(async () => {
 		if (wakeInterval && timerValue % wakeInterval === 0) {
-			await wakeContainer();
+			wakeContainer(`FocusInterval: timerValue = ${timerValue}`);
 		}
 		if (timerValue <= 0) {
-			clearInterval(intervalId);
-			return;
+			return clearInterval(intervalId);
 		}
 		await ctx
 			.editMessageText(`Focus started! (${--timerValue}/${focusPeriod} min)`, {
@@ -79,7 +78,6 @@ export async function startFocusInterval(ctx, focusPeriod) {
 			});
 	}, 60 * 1000);
 
-	wakeContainer();
 	return Number(intervalId);
 }
 
@@ -94,11 +92,10 @@ export async function startBreakIntreval(ctx, breakPeriod) {
 
 	const intervalId = setInterval(async () => {
 		if (wakeInterval && timerValue % wakeInterval === 0) {
-			await wakeContainer();
+			wakeContainer(`BreakInterval: timerValue = ${timerValue}`);
 		}
 		if (timerValue <= 0) {
-			clearInterval(intervalId);
-			return;
+			return clearInterval(intervalId);
 		}
 		await ctx
 			.editMessageText(`Focus finished! Have a break! (${--timerValue}/${breakPeriod} min)`, {
@@ -110,12 +107,11 @@ export async function startBreakIntreval(ctx, breakPeriod) {
 			});
 	}, 60 * 1000);
 
-	wakeContainer();
 	return Number(intervalId);
 }
 
-export async function wakeContainer() {
-	console.log('[Waking] Waking container up...');
+export async function wakeContainer(message) {
+	console.log(`[Waking] ${message}`);
 	return fetch(process.env.WH_DOMAIN).catch((err) => {
 		console.error('[Waking] Fetch error:', err.message);
 	});
