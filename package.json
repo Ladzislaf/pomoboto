@@ -4,9 +4,9 @@
 	"description": "Pomodoro Telegram bot",
 	"main": "index.js",
 	"scripts": {
-		"dev": "nodemon index.js",
-		"start": "node index.js",
-		"start:prod": "node index.js",
+		"dev": "nodemon ./src/index.js",
+		"start": "node ./src/index.js",
+		"start:prod": "node ./src/index.js",
 		"start:migrate:prod": "prisma migrate deploy && npm run start:prod"
 	},
 	"author": "Ladzislaf@gmail.com",
