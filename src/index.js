@@ -38,7 +38,7 @@ bot.command(/^focus(\d*)$/, (ctx) => {
     );
   }
   if (focusPeriod < 25 || focusPeriod > 120) {
-    return ctx.reply('25 - 120');
+    return ctx.reply('Use the recommended focus period: 25 - 120 min.');
   }
   if (ctx.session.focusIntervalId || ctx.session.focusTimeoutId) {
     return ctx.reply('The focus has already started.');
