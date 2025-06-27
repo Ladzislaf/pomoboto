@@ -13,7 +13,6 @@ startFocusScene.enter(async (ctx) => {
     breakPeriod,
   });
 
-  await ctx.deleteMessage();
   return ctx.scene.leave();
 });
 
